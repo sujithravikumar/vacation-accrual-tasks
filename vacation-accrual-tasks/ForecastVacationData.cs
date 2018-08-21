@@ -1,10 +1,11 @@
 ﻿using System;
 namespace vacation_accrual_tasks
 {
-    public class ForecastVacation
+    public class ForecastVacationData
     {
-        public ForecastVacation()
+        public ForecastVacationData()
         {
+            Console.WriteLine("Hello from Forecast Vacation");
         }
     }
 }

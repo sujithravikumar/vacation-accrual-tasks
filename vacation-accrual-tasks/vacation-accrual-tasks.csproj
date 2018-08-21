@@ -6,4 +6,10 @@
     <RootNamespace>vacation_accrual_tasks</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="1.50.5" />
+    <PackageReference Include="Npgsql" Version="4.0.2" />
+    <PackageReference Include="NLog" Version="4.5.8" />
+    <PackageReference Include="NLog.Config" Version="4.5.8" />
+  </ItemGroup>
 </Project>

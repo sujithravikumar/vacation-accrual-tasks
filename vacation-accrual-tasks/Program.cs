@@ -1,4 +1,5 @@
 ﻿using System;
+using NLog;
 
 namespace vacation_accrual_tasks
 {
@@ -6,7 +7,25 @@ namespace vacation_accrual_tasks
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            if (args.Length == 0)
+            {
+                Console.WriteLine("No arguments were passed");
+                Environment.Exit(0);
+            }
+            switch (args[0].ToLower())
+            {
+                case "forecastvacationdata":
+                    {
+                        ForecastVacationData fv = new ForecastVacationData();
+                        break;
+                    }
+                default:
+                    {
+                        Console.WriteLine("Invalid arguments were passed");
+                        break;
+                    }
+
+            }
         }
     }
 }
