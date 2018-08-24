@@ -12,25 +12,33 @@ namespace vacation_accrual_tasks
         {
             Console.WriteLine("Hello from Forecast Vacation");
 
-            IList<UserData> userDataList = GetUserData();
+            List<User> userList = GetUsers();
 
-            if (userDataList.Count == 0)
+            foreach (User user in userList)
             {
-                Console.WriteLine("The User Data is empty!");
-                return;
-            }
+                // FIXME 
+                // temporarily enabled business logic only for one user
+                if (user.Id != 1)
+                {
+                    continue;
+                }
 
-            // For each user
-            foreach (UserData ud in userDataList)
-            {
+                UserData userData = GetUserData(user.Id);
+
+                if (userData == null)
+                {
+                    Console.WriteLine("The User Data is empty!");
+                    return;
+                }
+
                 DateTime currentPayPeriodStartDate =
-                    GetCurrentPayPeriodStartDate(ud.Pay_Cycle_Regular);
+                    GetCurrentPayPeriodStartDate(userData.Pay_Cycle_Regular);
 
-                IList<VacationData> vacationDataList =
-                    GetVacationData(ud.User_Id,
+                List<VacationData> vacationDataList =
+                    GetVacationData(user.Id,
                                     currentPayPeriodStartDate.AddDays(-14));
 
-                if(vacationDataList.Count == 0)
+                if (vacationDataList == null || vacationDataList.Count == 0)
                 {
                     Console.WriteLine("The Vacation Data is empty!");
                     return;
@@ -44,19 +52,37 @@ namespace vacation_accrual_tasks
                                       $"{vd.Balance}\t{vd.Forefeit}");
                 }
             }
-
         }
 
-        static IList<UserData> GetUserData()
+        static List<User> GetUsers()
         {
-            IList<UserData> userDataList;
+            List<User> userList;
 
             using (var conn = Program.OpenConnection(Program._connStr))
             {
-                string querySQL = "SELECT * FROM public.static_data";
-                userDataList = conn.Query<UserData>(querySQL).ToList();
+                string querySQL = "SELECT * FROM public.user";
+                userList = conn.Query<User>(querySQL).ToList();
             }
-            return userDataList;
+            return userList;
+        }
+
+        static UserData GetUserData(int userId)
+        {
+            List<UserData> userDataList;
+
+            using (var conn = Program.OpenConnection(Program._connStr))
+            {
+                string querySQL = 
+                    "SELECT * FROM public.user_data WHERE user_id = @userId";
+                userDataList = conn.Query<UserData>(querySQL, new {userId}).ToList();
+            }
+
+            if(userDataList == null || userDataList.Count == 0)
+            {
+                return null;
+            }
+            // user_id is unique on database so it should return only one row
+            return userDataList[0];
         }
 
         static DateTime GetCurrentPayPeriodStartDate(bool isRegularPayCycle)
@@ -80,9 +106,9 @@ namespace vacation_accrual_tasks
             }
         }
 
-        static IList<VacationData> GetVacationData(int userId, DateTime startDate)
+        static List<VacationData> GetVacationData(int userId, DateTime startDate)
         {
-            IList<VacationData> vacationDataList;
+            List<VacationData> vacationDataList;
 
             using (var conn = Program.OpenConnection(Program._connStr))
             {

@@ -22,7 +22,8 @@ namespace vacation_accrual_tasks
         
         static void Main(string[] args)
         {
-            //FIXME
+            // FIXME
+            // temporarily overriding the argument array
             args = new string[] { "forecastvacationdata" };
 
             if (args.Length == 0)
