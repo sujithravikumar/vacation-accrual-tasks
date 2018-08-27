@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Dapper;
+using NLog;
 
 namespace vacation_accrual_tasks
 {
     public class ForecastVacationData
     {
+        static Logger logger = LogManager.GetCurrentClassLogger();
+
         public ForecastVacationData()
         {
             List<User> userList = GetUsers();
@@ -24,7 +27,7 @@ namespace vacation_accrual_tasks
                 UserData userData = GetUserData(user.Id);
 
                 DateTime currentPayPeriodStartDate =
-                    GetCurrentPayPeriodStartDate(userData.Pay_Cycle_Regular);
+                    GetCurrentPayPeriodStartDate(userData.Is_Pay_Cycle_Even_Ww);
 
                 List<VacationData> vacationDataList = GetVacationData(user.Id,
                                     currentPayPeriodStartDate.AddDays(-14));
@@ -38,15 +41,16 @@ namespace vacation_accrual_tasks
                 decimal lastBalance = vacationDataList.Last().Balance;
                 decimal lastForfeit = vacationDataList.Last().Forefeit;
 
+                decimal balance = vacationDataList.First().Balance;
+                decimal forfeit = 0;
+
                 // Update
                 for (int i = 1; i < vacationDataList.Count; i++)
                 {
-                    decimal balance = 
-                        vacationDataList[i-1].Balance +
-                        vacationDataList[i].Accrual -
+                    balance += vacationDataList[i].Accrual -
                         vacationDataList[i].Take;
 
-                    decimal forfeit = balance > userData.Max_Balance ?
+                    forfeit += balance > userData.Max_Balance ?
                                           balance - userData.Max_Balance : 0;
 
                     if (balance != vacationDataList[i].Balance || 
@@ -93,6 +97,27 @@ namespace vacation_accrual_tasks
             }
         }
 
+        static DateTime GetCurrentPayPeriodStartDate(bool isPayCycleEvenWw)
+        {
+            DateTime now = DateTime.Now;
+            int diff = DayOfWeek.Sunday - now.DayOfWeek;
+            DateTime weekBegin = now.AddDays(diff);
+
+            GregorianCalendar calendar = new GregorianCalendar();
+            int weekNumber = calendar.GetWeekOfYear(weekBegin,
+                                CalendarWeekRule.FirstDay, DayOfWeek.Sunday);
+            int biweeklyKey = weekNumber % 2;
+
+            if (biweeklyKey == 0)
+            {
+                return isPayCycleEvenWw ? weekBegin : weekBegin.AddDays(-7);
+            }
+            else
+            {
+                return isPayCycleEvenWw ? weekBegin.AddDays(-7) : weekBegin;
+            }
+        }
+
         static List<User> GetUsers()
         {
             List<User> userList;
@@ -101,6 +126,12 @@ namespace vacation_accrual_tasks
             {
                 string querySQL = "SELECT * FROM public.user";
                 userList = conn.Query<User>(querySQL).ToList();
+            }
+            if (userList == null || userList.Count == 0)
+            {
+                string message = "The User List is empty";
+                Console.WriteLine(message);
+                logger.Error(message);
             }
             return userList;
         }
@@ -123,31 +154,12 @@ namespace vacation_accrual_tasks
 
             if (userDataList[0] == null)
             {
-                Console.WriteLine("The User Data is empty!");
+                string message = $"The User Data is empty for: {userId}";
+                Console.WriteLine(message);
+                logger.Error(message);
             }
             // user_id is unique on database so it should return only one row
             return userDataList[0];
-        }
-
-        static DateTime GetCurrentPayPeriodStartDate(bool isRegularPayCycle)
-        {
-            DateTime now = DateTime.Now;
-            int diff = DayOfWeek.Sunday - now.DayOfWeek;
-            DateTime weekBegin = now.AddDays(diff);
-
-            GregorianCalendar calendar = new GregorianCalendar();
-            int weekNumber = calendar.GetWeekOfYear(weekBegin, 
-                                CalendarWeekRule.FirstDay, DayOfWeek.Sunday);
-            int biweeklyKey = weekNumber % 2;
-
-            if (biweeklyKey == 0)
-            {
-                return isRegularPayCycle ? weekBegin : weekBegin.AddDays(-7);
-            }
-            else
-            {
-                return isRegularPayCycle ? weekBegin.AddDays(-7) : weekBegin;
-            }
         }
 
         static List<VacationData> GetVacationData(int userId, DateTime startDate)
@@ -170,11 +182,13 @@ namespace vacation_accrual_tasks
                 vacationDataList = conn.Query<VacationData>(querySQL,
                     new {userId, 
                         startDate = startDate.ToString("yyyy-MM-dd")}).ToList();
-
-                if (vacationDataList == null || vacationDataList.Count == 0)
-                {
-                    Console.WriteLine("The Vacation Data is empty!");
-                }
+            }
+            if (vacationDataList == null || vacationDataList.Count == 0)
+            {
+                string message =
+                    $"The Vacation Data is empty for: {userId} {startDate}";
+                Console.WriteLine(message);
+                logger.Error(message);
             }
             return vacationDataList;
         }
@@ -193,13 +207,16 @@ namespace vacation_accrual_tasks
                 var res = conn.Execute(updateSQL, new {id, balance, forfeit});
                 if (res == 0)
                 {
-                    Console.WriteLine(String.Format(
-                        "Update failed for {0}", id));
+                    string message = 
+                        $"Update failed for: {id} {balance} {forfeit}";
+                    Console.WriteLine(message);
+                    logger.Error(message);
                 }
-                // FIXME temporary logic
                 else
                 {
-                    Console.WriteLine("Update success");
+                    string message = $"Update success for: {id}";
+                    Console.WriteLine(message);
+                    logger.Info(message);
                 }
             }
         }
@@ -246,12 +263,16 @@ namespace vacation_accrual_tasks
                 );
                 if (res == 0)
                 {
-                    Console.WriteLine("Insert failed!");
+                    string message = 
+                        $"Insert failed for: {userId} {startDate} {endDate} {accrual} {take} {balance} {forfeit}";
+                    Console.WriteLine(message);
+                    logger.Error(message);
                 }
-                // FIXME temporary logic
                 else
                 {
-                    Console.WriteLine("Insert success");
+                    string message = $"Insert success for: {userId}";
+                    Console.WriteLine(message);
+                    logger.Info(message);
                 }
             }
         }

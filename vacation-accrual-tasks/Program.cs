@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using Dapper;
 using NLog;
 using Npgsql;
 
@@ -10,6 +7,8 @@ namespace vacation_accrual_tasks
 {
     class Program
     {
+        static Logger logger = LogManager.GetCurrentClassLogger();
+
         public static string _connStr = @"Server=localhost;Port=5432;
     Database=vacation_accrual;User Id=pguser;Password=pguser0;";
 
@@ -40,7 +39,9 @@ namespace vacation_accrual_tasks
                     }
                 default:
                     {
-                        Console.WriteLine("Invalid arguments were passed");
+                        string message = $"Invalid arguments were passed: {args[0]}";
+                        Console.WriteLine(message);
+                        logger.Error(message);
                         break;
                     }
 
