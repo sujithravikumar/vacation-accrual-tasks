@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using Microsoft.Extensions.Configuration;
 using NLog;
 using Npgsql;
 
@@ -9,9 +10,8 @@ namespace vacation_accrual_tasks
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static string _connStr = @"Server=localhost;Port=5432;
-    Database=vacation_accrual;User Id=pguser;Password=pguser0;";
-
+        public static string _connStr { get; private set; }
+       
         public static IDbConnection OpenConnection(string connStr)
         {
             var conn = new NpgsqlConnection(connStr);
@@ -21,15 +21,17 @@ namespace vacation_accrual_tasks
         
         static void Main(string[] args)
         {
-            // FIXME
-            // temporarily overriding the argument array
-            args = new string[] { "forecastvacationdata" };
-
             if (args.Length == 0)
             {
                 Console.WriteLine("No arguments were passed");
                 Environment.Exit(0);
             }
+
+            IConfigurationRoot Configuration = new ConfigurationBuilder()
+                                .AddUserSecrets<Program>().Build();
+            _connStr = Configuration["ConnectionString"];
+
+
             switch (args[0].ToLower())
             {
                 case "forecastvacationdata":
@@ -44,7 +46,6 @@ namespace vacation_accrual_tasks
                         logger.Error(message);
                         break;
                     }
-
             }
         }
     }
