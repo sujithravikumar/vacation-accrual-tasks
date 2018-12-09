@@ -17,13 +17,6 @@ namespace vacation_accrual_tasks
 
             foreach (User user in userList)
             {
-                // FIXME 
-                // temporarily enabled business logic only for one user
-                if (user.Id != 1)
-                {
-                    continue;
-                }
-
                 UserData userData = GetUserData(user.Id);
 
                 DateTime currentPayPeriodStartDate =
@@ -39,7 +32,7 @@ namespace vacation_accrual_tasks
                 DateTime lastStartDate = vacationDataList.Last().Start_Date;
                 DateTime lastEndDate = vacationDataList.Last().End_Date;
                 decimal lastBalance = vacationDataList.Last().Balance;
-                decimal lastForfeit = vacationDataList.Last().Forefeit;
+                decimal lastForfeit = vacationDataList.Last().Forfeit;
 
                 decimal balance = vacationDataList.First().Balance;
                 decimal forfeit = 0;
@@ -54,7 +47,7 @@ namespace vacation_accrual_tasks
                                           balance - userData.Max_Balance : 0;
 
                     if (balance != vacationDataList[i].Balance || 
-                       forfeit != vacationDataList[i].Forefeit)
+                       forfeit != vacationDataList[i].Forfeit)
                     {
                         UpdateVacationData(
                             vacationDataList[i].Id,
@@ -144,19 +137,17 @@ namespace vacation_accrual_tasks
             {
                 string querySQL = 
                     "SELECT * FROM public.user_data WHERE user_id = @userId";
-                userDataList = conn.Query<UserData>(querySQL, new {userId}).ToList();
+                userDataList = conn.Query<UserData>(querySQL, 
+                                                    new {userId}).ToList();
             }
 
-            if (userDataList == null || userDataList.Count == 0)
-            {
-                return null;
-            }
-
-            if (userDataList[0] == null)
+            if (userDataList == null || userDataList.Count == 0 || 
+                    userDataList[0] == null)
             {
                 string message = $"The User Data is empty for: {userId}";
                 Console.WriteLine(message);
                 logger.Error(message);
+                Environment.Exit(0);
             }
             // user_id is unique on database so it should return only one row
             return userDataList[0];
@@ -189,6 +180,7 @@ namespace vacation_accrual_tasks
                     $"The Vacation Data is empty for: {userId} {startDate}";
                 Console.WriteLine(message);
                 logger.Error(message);
+                Environment.Exit(0);
             }
             return vacationDataList;
         }

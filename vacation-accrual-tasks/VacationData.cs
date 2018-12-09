@@ -10,6 +10,6 @@ namespace vacation_accrual_tasks
         public decimal Accrual { get; set; }
         public decimal Take { get; set; }
         public decimal Balance { get; set; }
-        public decimal Forefeit { get; set; }
+        public decimal Forfeit { get; set; }
     }
 }
