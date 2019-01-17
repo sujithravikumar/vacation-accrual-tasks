@@ -11,7 +11,11 @@ namespace vacation_accrual_tasks
         static Logger logger = LogManager.GetCurrentClassLogger();
 
         public static string _connStr { get; private set; }
-       
+        public static string Smtp_Host { get; private set; }
+        public static int Smtp_Port { get; private set; }
+        public static string Smtp_Username { get; private set; }
+        public static string Smtp_Password { get; private set; }
+
         public static IDbConnection OpenConnection(string connStr)
         {
             var conn = new NpgsqlConnection(connStr);
@@ -30,6 +34,10 @@ namespace vacation_accrual_tasks
             IConfigurationRoot Configuration = new ConfigurationBuilder()
                                 .AddUserSecrets<Program>().Build();
             _connStr = Configuration["ConnectionString"];
+            Smtp_Host = Configuration["Smtp_Host"];
+            Smtp_Port = Convert.ToInt32(Configuration["Smtp_Port"]);
+            Smtp_Username = Configuration["Smtp_Username"];
+            Smtp_Password = Configuration["Smtp_Password"];
 
 
             switch (args[0].ToLower())
@@ -37,6 +45,7 @@ namespace vacation_accrual_tasks
                 case "forecastvacationdata":
                     {
                         Forecast.ForecastVacationData();
+                        Email.SendEmails();
                         break;
                     }
                 default:

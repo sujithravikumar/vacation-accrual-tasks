@@ -97,7 +97,7 @@ namespace vacation_accrual_tasks
             }
         }
 
-        static DateTime GetCurrentPayPeriodStartDate(bool isPayCycleEvenWw)
+        public static DateTime GetCurrentPayPeriodStartDate(bool isPayCycleEvenWw)
         {
             DateTime now = DateTime.Now;
             int diff = DayOfWeek.Sunday - now.DayOfWeek;
