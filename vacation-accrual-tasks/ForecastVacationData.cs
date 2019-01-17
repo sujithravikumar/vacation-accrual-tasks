@@ -20,7 +20,7 @@ namespace vacation_accrual_tasks
                 UserData userData = GetUserData(user.Id);
 
                 DateTime currentPayPeriodStartDate =
-                    GetCurrentPayPeriodStartDate(userData.Is_Pay_Cycle_Even_Ww);
+                    GetCurrentPayPeriodStartDate(userData.Start_Date_Even_Ww);
 
                 List<VacationData> vacationDataList = GetVacationData(user.Id,
                                     currentPayPeriodStartDate.AddDays(-14));
@@ -32,10 +32,10 @@ namespace vacation_accrual_tasks
                 DateTime lastStartDate = vacationDataList.Last().Start_Date;
                 DateTime lastEndDate = vacationDataList.Last().End_Date;
                 decimal lastBalance = vacationDataList.Last().Balance;
-                decimal lastForfeit = vacationDataList.Last().Forfeit;
 
                 decimal balance = vacationDataList.First().Balance;
                 decimal forfeit = 0;
+                decimal take = 0;
 
                 // Update
                 for (int i = 1; i < vacationDataList.Count; i++)
@@ -43,14 +43,16 @@ namespace vacation_accrual_tasks
                     balance += vacationDataList[i].Accrual -
                         vacationDataList[i].Take;
 
-                    forfeit += balance > userData.Max_Balance ?
+                    forfeit = balance > userData.Max_Balance ?
                                           balance - userData.Max_Balance : 0;
 
                     if (balance != vacationDataList[i].Balance || 
                        forfeit != vacationDataList[i].Forfeit)
                     {
                         UpdateVacationData(
-                            vacationDataList[i].Id,
+                            user.Id,
+                            vacationDataList[i].Start_Date,
+                            vacationDataList[i].End_Date,
                             balance,
                             forfeit
                         );
@@ -58,7 +60,6 @@ namespace vacation_accrual_tasks
                         if (i == vacationDataList.Count - 1)
                         {
                             lastBalance = balance;
-                            lastForfeit = forfeit;
                         }
                     }
                 }
@@ -66,25 +67,26 @@ namespace vacation_accrual_tasks
                 // Insert
                 for (int i = 1; i <= numberOfRowsToInsert; i++)
                 {
-                    decimal take = 0;
+                    forfeit = 0;
+                    take = 0;
                     lastBalance += userData.Accrual;
                     lastStartDate = lastStartDate.AddDays(14);
                     lastEndDate = lastEndDate.AddDays(14);
 
                     if (lastBalance > userData.Max_Balance)
                     {
-                        take = 8;
+                        take = 8 * userData.Take_Days_Off;
                         lastBalance -= take;
                         if (lastBalance > userData.Max_Balance)
                         {
-                            lastForfeit += lastBalance - userData.Max_Balance;
+                            forfeit = lastBalance - userData.Max_Balance;
                             lastBalance = userData.Max_Balance;
                         }
                     }
 
                     InsertVacationData(user.Id, lastStartDate,
                                        lastEndDate, userData.Accrual,
-                                       take, lastBalance, lastForfeit);
+                                       take, lastBalance, forfeit);
                 }
 
             }
@@ -117,7 +119,7 @@ namespace vacation_accrual_tasks
 
             using (var conn = Program.OpenConnection(Program._connStr))
             {
-                string querySQL = "SELECT * FROM public.user";
+                string querySQL = "SELECT id, email FROM public.AspNetUsers";
                 userList = conn.Query<User>(querySQL).ToList();
             }
             if (userList == null || userList.Count == 0)
@@ -131,26 +133,23 @@ namespace vacation_accrual_tasks
 
         static UserData GetUserData(int userId)
         {
-            List<UserData> userDataList;
+            UserData userData;
 
             using (var conn = Program.OpenConnection(Program._connStr))
             {
                 string querySQL = 
                     "SELECT * FROM public.user_data WHERE user_id = @userId";
-                userDataList = conn.Query<UserData>(querySQL, 
-                                                    new {userId}).ToList();
+                userData = conn.QuerySingle<UserData>(querySQL, new {userId});
             }
 
-            if (userDataList == null || userDataList.Count == 0 || 
-                    userDataList[0] == null)
+            if (userData == null)
             {
                 string message = $"The User Data is empty for: {userId}";
                 Console.WriteLine(message);
                 logger.Error(message);
                 Environment.Exit(0);
             }
-            // user_id is unique on database so it should return only one row
-            return userDataList[0];
+            return userData;
         }
 
         static List<VacationData> GetVacationData(int userId, DateTime startDate)
@@ -185,7 +184,8 @@ namespace vacation_accrual_tasks
             return vacationDataList;
         }
 
-        static void UpdateVacationData(int id, decimal balance, decimal forfeit)
+        static void UpdateVacationData(int userId, DateTime startDate,
+            DateTime endDate, decimal balance, decimal forfeit)
         {
             using (var conn = Program.OpenConnection(Program._connStr))
             {
@@ -195,18 +195,27 @@ namespace vacation_accrual_tasks
                                         balance = @balance,
                                         forfeit = @forfeit
                                     WHERE
-                                        id = @id";
-                var res = conn.Execute(updateSQL, new {id, balance, forfeit});
+                                        user_id = @userId
+                                        AND start_date = To_date(@startDate, 'YYYY-MM-DD')
+                                        AND end_date = To_date(@endDate, 'YYYY-MM-DD')";
+                var res = conn.Execute(updateSQL,
+                    new {
+                        userId,
+                        startDate = startDate.ToString("yyyy-MM-dd"),
+                        endDate = endDate.ToString("yyyy-MM-dd"),
+                        balance,
+                        forfeit
+                        });
                 if (res == 0)
                 {
                     string message = 
-                        $"Update failed for: {id} {balance} {forfeit}";
+                        $"Update failed for: {userId} {startDate} {endDate} {balance} {forfeit}";
                     Console.WriteLine(message);
                     logger.Error(message);
                 }
                 else
                 {
-                    string message = $"Update success for: {id}";
+                    string message = $"Update success for: {userId}";
                     Console.WriteLine(message);
                     logger.Info(message);
                 }
@@ -222,7 +231,6 @@ namespace vacation_accrual_tasks
                 var insertSQL = @"INSERT INTO
                                         public.vacation_data
                                         (
-                                            id,
                                             user_id,
                                             start_date,
                                             end_date,
@@ -233,7 +241,6 @@ namespace vacation_accrual_tasks
                                         )
                                     VALUES
                                         (
-                                            nextval('vacation_data_id_seq'),
                                             @userId,
                                             TO_DATE(@startDate, 'YYYY-MM-DD'),
                                             TO_DATE(@endDate, 'YYYY-MM-DD'),
