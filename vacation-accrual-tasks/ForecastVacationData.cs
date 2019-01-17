@@ -25,9 +25,10 @@ namespace vacation_accrual_tasks
                 List<VacationData> vacationDataList = GetVacationData(user.Id,
                                     currentPayPeriodStartDate.AddDays(-14));
 
+                // + 1 to account for the previous period extra row
                 int numberOfRowsToInsert =
-                        userData.Period > vacationDataList.Count ?
-                                userData.Period - vacationDataList.Count : 0;
+                        userData.Period + 1 > vacationDataList.Count ?
+                                userData.Period + 1 - vacationDataList.Count : 0;
 
                 DateTime lastStartDate = vacationDataList.Last().Start_Date;
                 DateTime lastEndDate = vacationDataList.Last().End_Date;
@@ -40,11 +41,15 @@ namespace vacation_accrual_tasks
                 // Update
                 for (int i = 1; i < vacationDataList.Count; i++)
                 {
+                    forfeit = 0;
                     balance += vacationDataList[i].Accrual -
                         vacationDataList[i].Take;
 
-                    forfeit = balance > userData.Max_Balance ?
-                                          balance - userData.Max_Balance : 0;
+                    if (balance > userData.Max_Balance)
+                    {
+                        forfeit = balance - userData.Max_Balance;
+                        balance = userData.Max_Balance;
+                    }
 
                     if (balance != vacationDataList[i].Balance || 
                        forfeit != vacationDataList[i].Forfeit)
