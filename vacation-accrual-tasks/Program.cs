@@ -36,7 +36,7 @@ namespace vacation_accrual_tasks
             {
                 case "forecastvacationdata":
                     {
-                        ForecastVacationData fv = new ForecastVacationData();
+                        Forecast.ForecastVacationData();
                         break;
                     }
                 default:

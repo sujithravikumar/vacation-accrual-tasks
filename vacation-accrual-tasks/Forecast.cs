@@ -7,11 +7,11 @@ using NLog;
 
 namespace vacation_accrual_tasks
 {
-    public class ForecastVacationData
+    public static class Forecast
     {
         static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public ForecastVacationData()
+        public static void ForecastVacationData()
         {
             List<User> userList = GetUsers();
 
