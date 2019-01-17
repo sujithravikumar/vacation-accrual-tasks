@@ -119,7 +119,7 @@ namespace vacation_accrual_tasks
 
             using (var conn = Program.OpenConnection(Program._connStr))
             {
-                string querySQL = "SELECT id, email FROM public.AspNetUsers";
+                string querySQL = "SELECT \"Id\", \"Email\" FROM public.\"AspNetUsers\"";
                 userList = conn.Query<User>(querySQL).ToList();
             }
             if (userList == null || userList.Count == 0)
@@ -131,7 +131,7 @@ namespace vacation_accrual_tasks
             return userList;
         }
 
-        static UserData GetUserData(int userId)
+        static UserData GetUserData(string userId)
         {
             UserData userData;
 
@@ -152,7 +152,7 @@ namespace vacation_accrual_tasks
             return userData;
         }
 
-        static List<VacationData> GetVacationData(int userId, DateTime startDate)
+        static List<VacationData> GetVacationData(string userId, DateTime startDate)
         {
             List<VacationData> vacationDataList;
 
@@ -168,7 +168,7 @@ namespace vacation_accrual_tasks
                                 AND start_date >= 
                                         TO_DATE(@startDate, 'YYYY-MM-DD')
                             ORDER BY
-                                id";
+                                start_date";
                 vacationDataList = conn.Query<VacationData>(querySQL,
                     new {userId, 
                         startDate = startDate.ToString("yyyy-MM-dd")}).ToList();
@@ -184,7 +184,7 @@ namespace vacation_accrual_tasks
             return vacationDataList;
         }
 
-        static void UpdateVacationData(int userId, DateTime startDate,
+        static void UpdateVacationData(string userId, DateTime startDate,
             DateTime endDate, decimal balance, decimal forfeit)
         {
             using (var conn = Program.OpenConnection(Program._connStr))
@@ -223,7 +223,7 @@ namespace vacation_accrual_tasks
         }
 
         static void InsertVacationData(
-            int userId, DateTime startDate, DateTime endDate, decimal accrual, 
+            string userId, DateTime startDate, DateTime endDate, decimal accrual, 
             decimal take, decimal balance, decimal forfeit)
         {
             using (var conn = Program.OpenConnection(Program._connStr))
