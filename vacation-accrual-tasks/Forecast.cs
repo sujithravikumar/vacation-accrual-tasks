@@ -19,6 +19,11 @@ namespace vacation_accrual_tasks
             {
                 UserData userData = GetUserData(user.Id);
 
+                if (userData == null)
+                {
+                    continue;
+                }
+
                 DateTime currentPayPeriodStartDate =
                     GetCurrentPayPeriodStartDate(userData.Start_Date_Even_Ww);
 
@@ -120,41 +125,21 @@ namespace vacation_accrual_tasks
 
         static List<User> GetUsers()
         {
-            List<User> userList;
-
             using (var conn = Program.OpenConnection(Program._connStr))
             {
                 string querySQL = "SELECT \"Id\", \"Email\" FROM public.\"AspNetUsers\"";
-                userList = conn.Query<User>(querySQL).ToList();
+                return conn.Query<User>(querySQL).ToList();
             }
-            if (userList == null || userList.Count == 0)
-            {
-                string message = "The User List is empty";
-                Console.WriteLine(message);
-                logger.Error(message);
-            }
-            return userList;
         }
 
         static UserData GetUserData(string userId)
         {
-            UserData userData;
-
             using (var conn = Program.OpenConnection(Program._connStr))
             {
                 string querySQL = 
                     "SELECT * FROM public.user_data WHERE user_id = @userId";
-                userData = conn.QuerySingle<UserData>(querySQL, new {userId});
+                return conn.QuerySingleOrDefault<UserData>(querySQL, new {userId});
             }
-
-            if (userData == null)
-            {
-                string message = $"The User Data is empty for: {userId}";
-                Console.WriteLine(message);
-                logger.Error(message);
-                Environment.Exit(0);
-            }
-            return userData;
         }
 
         static List<VacationData> GetVacationData(string userId, DateTime startDate)
