@@ -45,6 +45,10 @@ namespace vacation_accrual_tasks
                 case "forecastvacationdata":
                     {
                         Forecast.ForecastVacationData();
+                        break;
+                    }
+                case "sendreminderemails":
+                    {
                         Email.SendEmails();
                         break;
                     }
